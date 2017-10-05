@@ -38,7 +38,7 @@ void initialize(char *args[], struct jobParams *job) {
     return;
 }
 
-int getcmd(char *line, char *args[], int *background, struct jobParams *nextJob) {
+int getcmd(char *line, char *args[], struct jobParams *nextJob) {
 	int i = 0;
 	char *token, *loc;
 
@@ -49,11 +49,9 @@ int getcmd(char *line, char *args[], int *background, struct jobParams *nextJob)
 	// Check if background is specified..
 	if ((loc = index(line, '&')) != NULL) {
         nextJob->bg = 1;
-        *background = 1;
 		*loc = ' ';
 	} else {
         nextJob->bg = 0;
-        *background = 0;
     }
 
     if (strstr(line, ">>") != NULL) {
@@ -110,13 +108,12 @@ void addToJobList(int process_pid) {
 	}
 }
 
-int runJob(char *args[], int background, struct jobParams *nextJob) {
+int runJob(char *args[], struct jobParams *nextJob) {
     pid_t  pid;     // this is just a type def for int really..
     pid = fork();
     if (pid == 0) {
         //Child process..
         if(nextJob->redirectTo != NULL) {
-            printf("nextJob->redirectFlag %d\n", nextJob->redirectFlag);
             close(1);
             open(nextJob->redirectTo, O_WRONLY | O_CREAT | nextJob->redirectFlag, 0755);
         }
@@ -168,7 +165,6 @@ void printJob(struct node *pNode) {
 
 int main(void) {
 	char *args[20];
-	int bg;
     struct jobParams nextJob = {*args, 0, 0, NULL};
 
 	char *user = getenv("USER");
@@ -183,7 +179,6 @@ int main(void) {
 
 	while (1) {
 		initialize(args, &nextJob);
-		bg = 0;
 
 		int length = 0;
 		char *line = NULL;
@@ -192,14 +187,15 @@ int main(void) {
 		printf("%s", str);
 
 		length = getline(&line, &linecap, stdin);
-		if (length <= 0) { //if argument is empty
-			exit(-1);
+		if (!length) { //if argument is empty
+            printf("Empty input, exiting.\n");
+            exit(-1);
 		}
-		int cnt  = getcmd(line, args, &bg, &nextJob);
+		int cnt  = getcmd(line, args, &nextJob);
 		if (!strcmp("ls", args[0])) { // returns 0 if they are equal , then we negate to make the if statment true
-			runJob(args, bg, &nextJob);
+			runJob(args, &nextJob);
 		} else if (!strcmp("cat", args[0])) { // returns 0 if they are equal , then we negate to make the if statment true
-			runJob(args, bg, &nextJob);
+			runJob(args, &nextJob);
 		} else if (!strcmp(args[0], "exit")) {
 			exit(-1);
 		} else if (!strcmp("cd", args[0])) {
