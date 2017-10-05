@@ -25,6 +25,8 @@ struct jobParams {
 struct node *head_job = NULL;
 struct node *current_job = NULL;
 
+int ACTIVE_JOB = NULL;
+
 void initialize(char *args[], struct jobParams *job) {
 	for (int i = 0; i < 20; i++) {
 		args[i] = NULL;
@@ -145,8 +147,25 @@ void linkedSlice(struct node *pNode, struct node *pPrevious, struct node **pHead
 	free(pNode);
 }
 
+static void signalHandler(int sig) {
+    if (sig == SIGTSTP) {
+        printf("Ahhhh it cannot be stopped!\n");
+    }
+    if (sig == SIGINT) {
+        if(ACTIVE_JOB != NULL && kill(ACTIVE_JOB,0) == 0) {
+            // active job is still processing. Kill it.
+            printf("Killing active process\n");
+            kill(ACTIVE_JOB, SIGTERM);
+        }
+    }
+}
+
 int main(void) {
+    // used to avoid having zombie child processes
     signal(SIGCHLD, SIG_IGN);
+
+    signal(SIGINT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
 
 	char *args[20];
     struct jobParams nextJob = {*args, 0, 0, NULL};
@@ -160,6 +179,16 @@ int main(void) {
     time_t now;
     srand((unsigned int) (time(&now)));
 
+    // handle user signals
+    if(signal(SIGINT, signalHandler) == SIG_ERR) {
+        printf("ERROR! Couldn't bind signal handler\n");
+        exit(1);
+    }
+    // handle user signals
+    if(signal(SIGTSTP, signalHandler) == SIG_ERR) {
+        printf("ERROR! Couldn't bind signal handler\n");
+        exit(1);
+    }
 
 	while (1) {
 		initialize(args, &nextJob);
@@ -176,11 +205,13 @@ int main(void) {
             exit(-1);
 		}
 		int cnt  = getcmd(line, args, &nextJob);
-		if (!strcmp("ls", args[0])) { // returns 0 if they are equal , then we negate to make the if statment true
+		if (!strcmp("ls", args[0])) {
 			runJob(args, &nextJob);
-		} else if (!strcmp("cat", args[0])) { // returns 0 if they are equal , then we negate to make the if statment true
+		} else if (!strcmp("cat", args[0])) {
 			runJob(args, &nextJob);
-		} else if (!strcmp(args[0], "exit")) {
+		} else if (!strcmp("cp", args[0])) {
+			runJob(args, &nextJob);
+		} else if (!strcmp("exit", args[0])) {
 			exit(-1);
 		} else if (!strcmp("cd", args[0])) {
 
@@ -219,11 +250,12 @@ int main(void) {
                 if(cur->number == jobid) {
                     kill(cur->pid, SIGCONT);		//bring the process to the foreground
                     int status;
+                    ACTIVE_JOB = cur->pid;
                     waitpid(cur->pid,&status,WUNTRACED);
                 }
             }
         }
-        
+
 		free(line);
 	}
 }
