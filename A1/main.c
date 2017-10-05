@@ -120,6 +120,7 @@ int runJob(char *args[], struct jobParams *nextJob) {
         int w = rand() % 10;
         sleep(w);
         execvp(args[0], args);
+        exit(0);
     } else {
         int status;
         if(nextJob->bg) {
@@ -164,6 +165,8 @@ void printJob(struct node *pNode) {
 }
 
 int main(void) {
+    signal(SIGCHLD, SIG_IGN);
+
 	char *args[20];
     struct jobParams nextJob = {*args, 0, 0, NULL};
 
@@ -228,7 +231,7 @@ int main(void) {
             struct node *prev = NULL;
             for_each_item(cur, prev, head_job) {
                 if(cur->number == jobid) {
-                    kill(cur->pid,SIGCONT);		//bring the process to the foreground
+                    kill(cur->pid, SIGCONT);		//bring the process to the foreground
                     int status;
                     waitpid(cur->pid,&status,WUNTRACED);
                 }
