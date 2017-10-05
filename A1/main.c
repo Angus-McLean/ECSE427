@@ -25,7 +25,7 @@ struct jobParams {
 struct node *head_job = NULL;
 struct node *current_job = NULL;
 
-int ACTIVE_JOB = NULL;
+int ACTIVE_JOB;
 
 void initialize(char *args[], struct jobParams *job) {
 	for (int i = 0; i < 20; i++) {
@@ -129,6 +129,7 @@ int runJob(char *args[], struct jobParams *nextJob) {
             printf("Running %d in background\n", pid);
             addToJobList(pid);
         } else {
+            ACTIVE_JOB = pid;
             waitpid(pid, &status, WUNTRACED);
         }
     }
