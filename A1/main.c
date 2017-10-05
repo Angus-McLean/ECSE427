@@ -136,15 +136,6 @@ int runJob(char *args[], struct jobParams *nextJob) {
 #define for_each_item(item, previous, head) \
     for(item = head; item != NULL; previous = item, item = item->next)
 
-void linkedForEach(struct node *pNode, void (*fn)()) {
-	struct node *pPrevious = NULL;
-	while(pNode != NULL) {
-		fn(pNode, pPrevious);
-		pPrevious = pNode;
-		pNode = pNode->next;
-	}
-}
-
 void linkedSlice(struct node *pNode, struct node *pPrevious, struct node **pHead) {
     if(pPrevious != NULL) {
         pPrevious->next = pNode->next;
@@ -152,16 +143,6 @@ void linkedSlice(struct node *pNode, struct node *pPrevious, struct node **pHead
 		*pHead = (pNode->next) ? pNode->next : NULL;
     }
 	free(pNode);
-}
-
-void sliceInactiveJobs(struct node *pNode, struct node *pPrevious) {
-    if(kill(pNode->pid,0) != 0) {
-        linkedSlice(pNode, pPrevious, &head_job);
-    }
-}
-
-void printJob(struct node *pNode) {
-    printf("[%d] \t PID : %ld\n", pNode->number,(long) pNode->pid);
 }
 
 int main(void) {
@@ -190,7 +171,7 @@ int main(void) {
 		printf("%s", str);
 
 		length = getline(&line, &linecap, stdin);
-		if (!length) { //if argument is empty
+		if (length <= 1) { //if argument is empty
             printf("Empty input, exiting.\n");
             exit(-1);
 		}
@@ -220,10 +201,15 @@ int main(void) {
 
 		} else if(strcasecmp(args[0],"jobs")==0 && cnt == 1) {
 
-            linkedForEach(head_job, sliceInactiveJobs);
-            linkedForEach(head_job, printJob);
-
-            continue;
+            struct node *cur = NULL;
+            struct node *prev = NULL;
+            for_each_item(cur, prev, head_job) {
+                if(kill(cur->pid,0) != 0) {
+                    linkedSlice(cur, prev, &head_job);
+                } else {
+                    printf("[%d] \t PID : %ld\n", cur->number,(long) cur->pid);
+                }
+            }
         } else if (strcasecmp(args[0],"fg")==0 && cnt == 2) {
             int jobid = atoi(args[1]);
 
@@ -236,9 +222,8 @@ int main(void) {
                     waitpid(cur->pid,&status,WUNTRACED);
                 }
             }
-            continue;
         }
-
+        
 		free(line);
 	}
 }
