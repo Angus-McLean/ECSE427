@@ -17,7 +17,7 @@ struct node {
 
 struct jobParams {
     char *args[20];
-	int bg;
+    int bg;
     int redirectFlag;
     char *redirectTo;
 };
@@ -25,8 +25,10 @@ struct jobParams {
 struct node *head_job = NULL;
 struct node *current_job = NULL;
 
+// store the current forground job.
 int ACTIVE_JOB;
 
+// clears args array, resets jobParams struct
 void initialize(char *args[], struct jobParams *job) {
 	for (int i = 0; i < 20; i++) {
 		args[i] = NULL;
@@ -40,6 +42,7 @@ void initialize(char *args[], struct jobParams *job) {
     return;
 }
 
+// takes line<string> and args+nextJob pointers, parses the line into arguments and sets nextJob params accordingly
 int getcmd(char *line, char *args[], struct jobParams *nextJob) {
 	int i = 0;
 	char *token, *loc;
@@ -110,6 +113,7 @@ void addToJobList(int process_pid) {
 	}
 }
 
+// takes args and nextJob Params and runs the job, saves to linked list and handles output redirection if required
 int runJob(char *args[], struct jobParams *nextJob) {
     pid_t  pid;     // this is just a type def for int really..
     pid = fork();
@@ -139,6 +143,7 @@ int runJob(char *args[], struct jobParams *nextJob) {
 #define for_each_item(item, previous, head) \
     for(item = head; item != NULL; previous = item, item = item->next)
 
+// slices a node from the linked list.
 void linkedSlice(struct node *pNode, struct node *pPrevious, struct node **pHead) {
     if(pPrevious != NULL) {
         pPrevious->next = pNode->next;
@@ -168,14 +173,14 @@ int main(void) {
     signal(SIGINT, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
 
-	char *args[20];
+  	char *args[20];
     struct jobParams nextJob = {*args, 0, 0, NULL};
 
-	char *user = getenv("USER");
-	if (user == NULL) user = "User";
+  	char *user = getenv("USER");
+  	if (user == NULL) user = "User";
 
-	char str[sizeof(char)*strlen(user) + 4];
-	sprintf(str, "\n%s>> ", user);
+  	char str[sizeof(char)*strlen(user) + 4];
+  	sprintf(str, "\n%s>> ", user);
 
     time_t now;
     srand((unsigned int) (time(&now)));
