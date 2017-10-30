@@ -1,0 +1,51 @@
+P1Q1. Describe the difference between uniprogramming, multiprogramming and timesharing systems. (5%)
+
+Answer :
+  Uniprogramming is such that only one program is running in the system. If multiple programs need
+to be executed they are queued and run one at a time.
+  Multiprogramming is where multiple programs simultaneously loaded into the system. This means
+that programs can continue running while others are in idle or waiting states. This introduces
+complexity with resource allocation (processor time and memory sharing) but is advantageous when
+running programs that need to interact with high latency external devices as other programs can
+use processor cycles in the meantime.
+
+
+
+
+P1Q2. Suppose you have three programs, A, B, and C, that are either running or waiting on
+a resource. Each program runs for 2msec, waits on a resource for 10msec, and then runs for
+4msec. Suppose that the first program starts running at t=0msec, at what time will all 3
+programs complete in a uniprogramming system? What about a multiprogramming system?
+(5%)
+
+Answer :
+  Uniprogramming :
+    2ms (ProcA running) -> 10ms (ProcA waiting) -> 4ms (ProcA running) -> 2ms (ProcB running) -> 10ms (ProcB waiting) -> 4ms (ProcB running) -> 2ms (ProcC running) -> 10ms (ProcC waiting) -> 4ms (ProcC running)
+
+    Total : 48ms
+
+  Multiprogramming :
+    2ms (ProcA running) -> 10ms (ProcA waiting)                                                 -> 6ms (still waiting for ProcA) -> 4ms (ProcA running)
+                        -> 2ms (ProcB running)  -> 10ms (ProcB waiting)                                                                                 -> 4ms (ProcB running)
+                                                -> 2ms (ProcC running)  -> 10ms (ProcC waiting)                                                                                 -> 4ms (ProcC running)
+    2 + 2 + 2 + 6 + 4 + 4 + 4 =
+    Total : 24ms
+
+
+
+
+P1Q3. Consider the following simple C program, which outputs a line of code on the
+screen. Modify the program using system calls in order to redirect the output to a file called
+redirect.txt. (5%)
+
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+int main()
+{
+close(1);
+char* redirectFile = "redirect.txt";
+open(redirectFile, O_WRONLY | O_CREAT | O_TRUNC, 0755);
+printf(“A simple program output.”);
+return 0;
+}

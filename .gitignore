@@ -3,3 +3,5 @@ tmp/
 */compiling_error.txt
 */test.txt
 *.pdf
+*.zip
+_ignore_*
