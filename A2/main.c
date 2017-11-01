@@ -74,11 +74,11 @@ void printTableInfo(struct table *base)
     sem_wait(mutexB);
 
     //print the tables with table numbers and name
-    printf("printing section A\n");
+    printf(" ---- Section A ---- \n");
     for (int i=0; i<10; i++){
         printf("Table %d - %s\n", (base+i)->num, (base+i)->name);
     }
-    printf("printing section B\n");
+    printf(" ---- Section B ---- \n");
     for (int j=0; j<10; j++){
         printf("Table %d - %s\n", (base+j+10)->num, (base+j+10)->name);
     }
@@ -171,7 +171,7 @@ void reserveSomeTable(struct table *base, char *nameHld, char *section)
                     break;
                 }
             }
-            printf("outside loop %d %d\n", i, success);
+
             //if no empty table print : Cannot find empty table
             if (!success) {
                 printf("Cannot find empty table\n");
@@ -194,26 +194,23 @@ int processCmd(char *cmd, struct table *base)
     switch (token[0])
     {
         case 'r':
-        nameHld = strtok(NULL, " ");
-        section = strtok(NULL, " ");
-        tableChar = strtok(NULL, " ");
-        if (tableChar != NULL)
-        {
-            tableNo = atoi(tableChar);
-            reserveSpecificTable(base, nameHld, section, tableNo);
-        }
-        else
-        {
-            reserveSomeTable(base, nameHld, section);
-        }
-        sleep(rand() % 2);
-        break;
+            nameHld = strtok(NULL, " ");
+            section = strtok(NULL, " ");
+            tableChar = strtok(NULL, " ");
+            if (tableChar != NULL) {
+                tableNo = atoi(tableChar);
+                reserveSpecificTable(base, nameHld, section, tableNo);
+            } else {
+                reserveSomeTable(base, nameHld, section);
+            }
+            sleep(rand() % 2);
+            break;
         case 's':
-        printTableInfo(base);
-        break;
+            printTableInfo(base);
+            break;
         case 'i':
-        initTables(base);
-        break;
+            initTables(base);
+            break;
         case 'e':
         return 0;
     }
@@ -227,9 +224,10 @@ int main(int argc, char * argv[])
     if(argc>1)
     {
         //store actual stdin before rewiring using dup in fdstdin
-
+        dup2(0,fdstdin);
         //perform stdin rewiring as done in assign 1
-
+        close(0);
+        open(argv[1], O_RDONLY);
     }
     //open mutex BUFF_MUTEX_A and BUFF_MUTEX_B with inital value 1 using sem_open
     mutexA = sem_open(BUFF_MUTEX_A, O_CREAT, 0777, 1);
@@ -268,25 +266,6 @@ int main(int argc, char * argv[])
     //intialising random number generator
     time_t now;
     srand((unsigned int)(time(&now)));
-
-    if (argc>1)
-    {
-        FILE * fp;
-        char * line = NULL;
-        size_t len = 0;
-        ssize_t read;
-
-        fp = fopen(argv[1], "r");
-        if (fp == NULL)
-            exit(EXIT_FAILURE);
-
-        while ((read = getline(&line, &len, fp)) != -1) {
-            processCmd(line, base);
-        }
-        fclose(fp);
-        if (line)
-            free(line);
-    }
 
     //array in which the user command is held
     char cmd[100];
