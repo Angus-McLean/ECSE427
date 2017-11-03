@@ -1,7 +1,22 @@
 init
+reserve invalidNum A ###
+reserve invalidNum A 11
+reserve invalidSection Z
+reserve invalidSection Z 1
 reserve person1 A 1
+reserve personRand A
 status
 reserve person2 A 2
-reserve angRand A
+reserve person3 A 3
+reserve person4 A 4
+reserve personRand A
+reserve tableTaken A 5
+reserve person6 A 6
+reserve person7 A 7
+reserve person8 A 8
+reserve tableTaken A 8
+reserve person9 A 9
+reserve sectionFull A
 status
+
 exit

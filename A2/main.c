@@ -113,8 +113,6 @@ int writeTable(struct table *base, int tableIndex, char *nameHld) {
 void reserveSpecificTable(struct table *base, char *nameHld, char *section, int tableNo)
 {
 
-    printf("reserveSpecificTable %s %s %d\n", nameHld, section, tableNo);
-
     //check if table number belongs to section specified
     //if not: print Invalid table number
     if(tableNo == 0 || tableNo > 9) {
@@ -180,6 +178,9 @@ void reserveSomeTable(struct table *base, char *nameHld, char *section)
             //release mutex for section A
             sem_post(mutexB);
             break;
+        default :
+            printf("Invalid Section\n");
+            break;
     }
 }
 
@@ -190,6 +191,10 @@ int processCmd(char *cmd, struct table *base)
     char *section;
     char *tableChar;
     int tableNo;
+    if(!strlen(cmd) || !strcmp(cmd, " ")) {
+        printf("Invalid Input");
+        return 1;
+    }
     token = strtok(cmd, " ");
     switch (token[0])
     {
@@ -212,7 +217,10 @@ int processCmd(char *cmd, struct table *base)
             initTables(base);
             break;
         case 'e':
-        return 0;
+            return 0;
+        default :
+            printf("Invalid Command\n");
+            break;
     }
     return 1;
 }
@@ -279,7 +287,6 @@ int main(int argc, char * argv[])
         {
             printf("Executing Command : %s\n",cmd);
         }
-        printf("Executing Command : %s\n",cmd);
         ret = processCmd(cmd, base);
     }
 
