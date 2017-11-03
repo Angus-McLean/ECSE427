@@ -1,0 +1,13 @@
+init
+reserve person1 B
+reserve person2 B
+reserve person3 B
+reserve person4 B
+reserve person5 B
+status
+status
+status ##add wait time for proc1 to finish reserving seats
+status ##if semaphores not implemented properly one of the tables in section B
+status ##would have been double booked allowing the last person to reserve a table
+reserve seatsFull B
+exit

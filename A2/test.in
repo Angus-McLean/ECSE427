@@ -1,4 +1,10 @@
 init
+reserve person1 B
+reserve person2 B
+reserve person3 B
+reserve person4 B
+reserve person5 B
+status
 reserve invalidNum A ###
 reserve invalidNum A 11
 reserve invalidSection Z
@@ -19,4 +25,5 @@ reserve person9 A 9
 reserve sectionFull A
 status
 
+## test for ^ empty and invalid inputs
 exit
