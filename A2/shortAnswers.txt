@@ -1,0 +1,15 @@
+P1Q1.
+Step 0: flag[0]=true, flag[1]=undefined;
+Step 1: flag[0]=true, flag[1]=true;
+Step 2: Process 0 waiting for flag[1] to go false before releasing flag[0]
+Step 3: Process 1 waiting for flag[0] to go false before releasing flag[1]
+Step 4: Process 0 and Process 1 are deadlocked
+
+
+P1Q2.
+Step 0: turn=0;
+Step 1: Process 1 waiting to enter CS
+Step 2: Process 0 is a slower process. Has not entered CS yet
+Step 3: Process 0 is a slower process. Has not entered CS yet
+Step 4: Process 0 is a slower process. Has not entered CS yet
+Step 5: Process 1 is being starved

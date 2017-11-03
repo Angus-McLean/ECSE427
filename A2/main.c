@@ -284,8 +284,8 @@ int main(int argc, char * argv[])
     }
 
     //close the semphores
-    sem_unlink(BUFF_MUTEX_A);
-    sem_unlink(BUFF_MUTEX_B);
+    sem_close(mutexA);
+    sem_close(mutexB);
 
 
     //reset the standard input

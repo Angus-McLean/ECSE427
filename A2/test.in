@@ -1,0 +1,7 @@
+init
+reserve person1 A 1
+status
+reserve person2 A 2
+reserve angRand A
+status
+exit
