@@ -8,18 +8,18 @@
 // #include <fuse.h>
 #include <strings.h>
 #include "disk_emu.h"
-#define MCLEAN_ANGUS_DISK "sfs_disk.disk"
-#define BLOCK_SIZE 1024
-#define NUM_BLOCKS 1024  //maximum number of data blocks on the disk.
-#define BITMAP_ROW_SIZE (NUM_BLOCKS/8) // this essentially mimcs the number of rows we have in the bitmap. we will have 128 rows.
-#define NUM_ADDRESSES_INDIRECT (BLOCK_SIZE/sizeof(int))   //TODO
-#define INODE_TABLE_LEN 100
-#define TOTAL_NUM_BLOCKS_INODETABLE ((INODE_TABLE_LEN)*(sizeof(inode_t))/BLOCK_SIZE + (((INODE_TABLE_LEN)*(sizeof(inode_t)))%BLOCK_SIZE > 0))
-
-#define NUM_FILES (INODE_TABLE_LEN-1)
-#define TOTAL_NUM_BLOCKS_ROOTDIR ((NUM_FILES)*(sizeof(directory_entry))/BLOCK_SIZE + (((NUM_FILES)*(sizeof(directory_entry)))%BLOCK_SIZE > 0)) // getting ceiling value = 3
-
-#define START_ADDRESS_OF_DATABLOCKS (1+TOTAL_NUM_BLOCKS_INODETABLE)
+// #define MCLEAN_ANGUS_DISK "sfs_disk.disk"
+// #define BLOCK_SIZE 1024
+// #define NUM_BLOCKS 1024  //maximum number of data blocks on the disk.
+// #define BITMAP_ROW_SIZE (NUM_BLOCKS/8) // this essentially mimcs the number of rows we have in the bitmap. we will have 128 rows.
+// #define NUM_ADDRESSES_INDIRECT (BLOCK_SIZE/sizeof(int))   //TODO
+// #define INODE_TABLE_LEN 100
+// #define TOTAL_NUM_BLOCKS_INODETABLE ((INODE_TABLE_LEN)*(sizeof(inode_t))/BLOCK_SIZE + (((INODE_TABLE_LEN)*(sizeof(inode_t)))%BLOCK_SIZE > 0))
+//
+// #define NUM_FILES (INODE_TABLE_LEN-1)
+// #define TOTAL_NUM_BLOCKS_ROOTDIR ((NUM_FILES)*(sizeof(directory_entry))/BLOCK_SIZE + (((NUM_FILES)*(sizeof(directory_entry)))%BLOCK_SIZE > 0)) // getting ceiling value = 3
+//
+// #define START_ADDRESS_OF_DATABLOCKS (1+TOTAL_NUM_BLOCKS_INODETABLE)
 
 /* macros */
 #define FREE_BIT(_data, _which_bit) \
@@ -32,88 +32,92 @@
 /////// State / Cached Variables ///////
 //initialize all bits to high
 // uint8_t free_bit_map[BITMAP_ROW_SIZE] = { [0 ... BITMAP_ROW_SIZE - 1] = UINT8_MAX };
-struct superblock_t superblock;
-void* buffer;
-struct inode_t cachedINodeTable[INODE_TABLE_LEN];
-struct directory_entry cachedFiles[NUM_FILES];
-struct file_descriptor cachedFd[INODE_TABLE_LEN];
+// struct superblock_t superblock;
+// void* buffer;
+// struct inode_t cachedINodeTable[INODE_TABLE_LEN];
+// struct directory_entry cachedFiles[NUM_FILES];
+// struct file_descriptor cachedFd[INODE_TABLE_LEN];
+//
+// int filesVisited = 0; // for sfs_get_next_file_name
+// int totalFiles = 0; // for sfs_get_next_file_name
 
-int filesVisited = 0; // for sfs_get_next_file_name
-int totalFiles = 0; // for sfs_get_next_file_name
-
+#include "globals.c"
+#include "helpers.h"
 
 /////// Helper Functions ///////
 
-void writeBlocksToBuf(void *data, int dataSize) {
-  int blockedSize = (dataSize/BLOCK_SIZE + (dataSize%BLOCK_SIZE > 0)) * BLOCK_SIZE;
-  buffer = (void*) malloc(blockedSize);
-	memset(buffer, 0, blockedSize);
-	memcpy(buffer, data, dataSize);
-}
+// void writeBlocksToBuf(void *data, int dataSize) {
+//   int blockedSize = (dataSize/BLOCK_SIZE + (dataSize%BLOCK_SIZE > 0)) * BLOCK_SIZE;
+//   buffer = (void*) malloc(blockedSize);
+// 	memset(buffer, 0, blockedSize);
+// 	memcpy(buffer, data, dataSize);
+// }
+//
+// void readBlocksToBuf(int start_address, int nblocks) {
+//   buffer = (void*) malloc(nblocks*BLOCK_SIZE);
+//   memset(buffer, 0, nblocks*BLOCK_SIZE);
+//   read_blocks(start_address, nblocks, buffer);
+// }
+//
+// int write_and_bitmap(int start_address, int nblocks, void *buffer){
+//   int blocksWritten = write_blocks(start_address, nblocks, buffer);
+//   for (int i=start_address; i<nblocks; i++)
+//     force_set_index(i);
+//   return blocksWritten;
+// }
+//
+// int writeINodeTable(int updateBitMap) {
+// 	// buffer = (void*) malloc(TOTAL_NUM_BLOCKS_INODETABLE*BLOCK_SIZE);
+// 	// memset(buffer, 0, TOTAL_NUM_BLOCKS_INODETABLE*BLOCK_SIZE);
+//   // memcpy(buffer, cachedINodeTable, (INODE_TABLE_LEN)*(sizeof(inode_t)));
+//   writeBlocksToBuf(cachedINodeTable, (INODE_TABLE_LEN)*(sizeof(inode_t)));
+//   int blocksWritten;
+//   if(updateBitMap) {
+//     blocksWritten = write_and_bitmap(1, TOTAL_NUM_BLOCKS_INODETABLE, buffer);
+//   } else {
+//     write_blocks(1, TOTAL_NUM_BLOCKS_INODETABLE, buffer);
+//   }
+// 	free(buffer);
+// 	return blocksWritten;
+// }
+//
+// int writeRootDirectory(int updateBitMap) {
+// 	// buffer = (void*) malloc(TOTAL_NUM_BLOCKS_ROOTDIR*BLOCK_SIZE);
+// 	// memset(buffer, 0, TOTAL_NUM_BLOCKS_ROOTDIR*BLOCK_SIZE);
+//   // memcpy(buffer, cachedFiles, (NUM_FILES)*(sizeof(directory_entry)));
+//   writeBlocksToBuf(cachedFiles, (NUM_FILES)*(sizeof(directory_entry)));
+//   int blocksWritten;
+//   if(updateBitMap) {
+//     blocksWritten = write_and_bitmap(START_ADDRESS_OF_DATABLOCKS, TOTAL_NUM_BLOCKS_ROOTDIR, buffer);
+//   } else {
+//     write_blocks(START_ADDRESS_OF_DATABLOCKS, TOTAL_NUM_BLOCKS_ROOTDIR, buffer);
+//   }
+// 	free(buffer);
+// 	return blocksWritten;
+// }
+//
+// int writeFreeBitMap(int updateBitMap) { // write to disk
+// 	// buffer = (void*) malloc(BLOCK_SIZE);
+// 	// memset(buffer, 1, BLOCK_SIZE);
+//   // memcpy(buffer, free_bit_map, (SIZE)*(sizeof(uint8_t)));
+//   writeBlocksToBuf(free_bit_map, (SIZE)*(sizeof(uint8_t)));
+//   int blocksWritten;
+//   if(updateBitMap) {
+//     blocksWritten = write_and_bitmap(NUM_BLOCKS-1, 1, buffer);
+//   } else {
+//     write_blocks(NUM_BLOCKS-1, 1, buffer);
+//   }
+// 	free(buffer);
+// 	return blocksWritten;
+// }
+//
+// // TODO
+// int calculateByteIndex(int blockIndex, int indexInBlock) {
+// 	return BLOCK_SIZE*blockIndex+indexInBlock;
+// }
 
-void readBlocksToBuf(int start_address, int nblocks) {
-  buffer = (void*) malloc(nblocks*BLOCK_SIZE);
-  memset(buffer, 0, nblocks*BLOCK_SIZE);
-  read_blocks(start_address, nblocks, buffer);
-}
-
-int write_and_bitmap(int start_address, int nblocks, void *buffer){
-  int blocksWritten = write_blocks(start_address, nblocks, buffer);
-  for (int i=start_address; i<nblocks; i++)
-    force_set_index(i);
-  return blocksWritten;
-}
-
-int writeINodeTable(int updateBitMap) {
-	// buffer = (void*) malloc(TOTAL_NUM_BLOCKS_INODETABLE*BLOCK_SIZE);
-	// memset(buffer, 0, TOTAL_NUM_BLOCKS_INODETABLE*BLOCK_SIZE);
-  // memcpy(buffer, cachedINodeTable, (INODE_TABLE_LEN)*(sizeof(inode_t)));
-  writeBlocksToBuf(cachedINodeTable, (INODE_TABLE_LEN)*(sizeof(inode_t)));
-  int blocksWritten;
-  if(updateBitMap) {
-    blocksWritten = write_and_bitmap(1, TOTAL_NUM_BLOCKS_INODETABLE, buffer);
-  } else {
-    write_blocks(1, TOTAL_NUM_BLOCKS_INODETABLE, buffer);
-  }
-	free(buffer);
-	return blocksWritten;
-}
-
-int writeRootDirectory(int updateBitMap) {
-	// buffer = (void*) malloc(TOTAL_NUM_BLOCKS_ROOTDIR*BLOCK_SIZE);
-	// memset(buffer, 0, TOTAL_NUM_BLOCKS_ROOTDIR*BLOCK_SIZE);
-  // memcpy(buffer, cachedFiles, (NUM_FILES)*(sizeof(directory_entry)));
-  writeBlocksToBuf(cachedFiles, (NUM_FILES)*(sizeof(directory_entry)));
-  int blocksWritten;
-  if(updateBitMap) {
-    blocksWritten = write_and_bitmap(START_ADDRESS_OF_DATABLOCKS, TOTAL_NUM_BLOCKS_ROOTDIR, buffer);
-  } else {
-    write_blocks(START_ADDRESS_OF_DATABLOCKS, TOTAL_NUM_BLOCKS_ROOTDIR, buffer);
-  }
-	free(buffer);
-	return blocksWritten;
-}
-
-int writeFreeBitMap(int updateBitMap) { // write to disk
-	// buffer = (void*) malloc(BLOCK_SIZE);
-	// memset(buffer, 1, BLOCK_SIZE);
-  // memcpy(buffer, free_bit_map, (SIZE)*(sizeof(uint8_t)));
-  writeBlocksToBuf(free_bit_map, (SIZE)*(sizeof(uint8_t)));
-  int blocksWritten;
-  if(updateBitMap) {
-    blocksWritten = write_and_bitmap(NUM_BLOCKS-1, 1, buffer);
-  } else {
-    write_blocks(NUM_BLOCKS-1, 1, buffer);
-  }
-	free(buffer);
-	return blocksWritten;
-}
-
-// TODO
-int calculateByteIndex(int blockIndex, int indexInBlock) {
-	return BLOCK_SIZE*blockIndex+indexInBlock;
-}
-
+int filesVisited = 0; // for sfs_get_next_file_name
+int totalFiles = 0; // for sfs_get_next_file_name
 
 /////// Provided SFS API Functions ///////
 void mksfs(int fresh) {
