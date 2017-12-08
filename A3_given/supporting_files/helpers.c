@@ -13,7 +13,7 @@
 
 /////// Helper Functions ///////
 
-int nameValid(const char* name) {
+int checkNameIsValid(const char* name) {
 	int length = strlen(name);
 	if (length > MAX_FILE_NAME)
 		return -1;
@@ -50,10 +50,7 @@ int write_and_bitmap(int start_address, int nblocks, void *buffer){
   return blocksWritten;
 }
 
-int writeINodeTable(int updateBitMap) {
-	// buffer = (void*) malloc(TOTAL_NUM_BLOCKS_INODETABLE*BLOCK_SIZE);
-	// memset(buffer, 0, TOTAL_NUM_BLOCKS_INODETABLE*BLOCK_SIZE);
-  // memcpy(buffer, cachedINodeTable, (INODE_TABLE_LEN)*(sizeof(inode_t)));
+int saveINodeTable(int updateBitMap) {
   writeBlocksToBuf(cachedINodeTable, (INODE_TABLE_LEN)*(sizeof(inode_t)));
   int blocksWritten;
   if(updateBitMap) {
@@ -65,10 +62,7 @@ int writeINodeTable(int updateBitMap) {
 	return blocksWritten;
 }
 
-int writeRootDirectory(int updateBitMap) {
-	// buffer = (void*) malloc(TOTAL_NUM_BLOCKS_ROOTDIR*BLOCK_SIZE);
-	// memset(buffer, 0, TOTAL_NUM_BLOCKS_ROOTDIR*BLOCK_SIZE);
-  // memcpy(buffer, cachedFiles, (NUM_FILES)*(sizeof(directory_entry)));
+int saveRootDirectory(int updateBitMap) {
   writeBlocksToBuf(cachedFiles, (NUM_FILES)*(sizeof(directory_entry)));
   int blocksWritten;
   if(updateBitMap) {
@@ -80,10 +74,7 @@ int writeRootDirectory(int updateBitMap) {
 	return blocksWritten;
 }
 
-int writeFreeBitMap(int updateBitMap) { // write to disk
-	// buffer = (void*) malloc(BLOCK_SIZE);
-	// memset(buffer, 1, BLOCK_SIZE);
-  // memcpy(buffer, free_bit_map, (SIZE)*(sizeof(uint8_t)));
+int saveFreeBitMap(int updateBitMap) {
   writeBlocksToBuf(free_bit_map, (SIZE)*(sizeof(uint8_t)));
   int blocksWritten;
   if(updateBitMap) {
@@ -95,7 +86,6 @@ int writeFreeBitMap(int updateBitMap) { // write to disk
 	return blocksWritten;
 }
 
-// TODO
-int calculateByteIndex(int blockIndex, int indexInBlock) {
-	return BLOCK_SIZE*blockIndex+indexInBlock;
+int calcByteAddress(int blockNum, int offset) {
+	return BLOCK_SIZE*blockNum+offset;
 }
