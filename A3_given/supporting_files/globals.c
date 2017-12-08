@@ -13,7 +13,7 @@
 #define BLOCK_SIZE 1024
 #define NUM_BLOCKS 1024  //maximum number of data blocks on the disk.
 #define BITMAP_ROW_SIZE (NUM_BLOCKS/8) // this essentially mimcs the number of rows we have in the bitmap. we will have 128 rows.
-#define NUM_ADDRESSES_INDIRECT (BLOCK_SIZE/sizeof(int))   //TODO
+#define NUM_INDIRECT_ADDRESSES (BLOCK_SIZE/sizeof(int))   //TODO
 #define INODE_TABLE_LEN 100
 #define TOTAL_NUM_BLOCKS_INODETABLE ((INODE_TABLE_LEN)*(sizeof(inode_t))/BLOCK_SIZE + (((INODE_TABLE_LEN)*(sizeof(inode_t)))%BLOCK_SIZE > 0))
 
@@ -32,5 +32,5 @@ struct inode_t cachedINodeTable[INODE_TABLE_LEN];
 struct directory_entry cachedFiles[NUM_FILES];
 struct file_descriptor cachedFd[INODE_TABLE_LEN];
 
-int filesVisited; // for sfs_get_next_file_name
-int totalFiles; // for sfs_get_next_file_name
+int totalFilesVisited;
+int numTotalFiles;

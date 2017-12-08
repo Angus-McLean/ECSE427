@@ -21,8 +21,8 @@
 #include "helpers.h"
 
 
-int filesVisited = 0;
-int totalFiles = 0;
+int totalFilesVisited = 0;
+int numTotalFiles = 0;
 
 /////// Provided SFS API Functions ///////
 void mksfs(int fresh) {
@@ -36,25 +36,25 @@ void mksfs(int fresh) {
     memset(buffer, 0, BLOCK_SIZE);
 		memcpy(buffer, &superblock, sizeof(superblock_t));
 
-    if (write_and_bitmap(0, 1, buffer) < 0) printf("Failed to write super block\n");
+    if (write_and_bitmap(0, 1, buffer) < 0) printf("Failed : write_and_bitmap\n");
 		free(buffer);
 
     // initialize inode table with empty inodes
     cachedINodeTable[0] = (inode_t) {777, 0, 0, 0, 0, {START_ADDRESS_OF_DATABLOCKS, START_ADDRESS_OF_DATABLOCKS+1, START_ADDRESS_OF_DATABLOCKS+2, -1, -1, -1, -1, -1, -1, -1, -1, -1}, -1};
     for (int i=1; i<INODE_TABLE_LEN; i++)
       cachedINodeTable[i] = (inode_t) {777, 0, 0, 0, -1, {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, -1};
-    if (saveINodeTable(1) < 0) printf("Failed to writed inode table\n");
+    if (saveINodeTable(1) < 0) printf("Failed : saveINodeTable\n");
 
     // init directory entries
 		for (i=0; i<NUM_FILES; i++) {
 			cachedFiles[i].num = -1;
 			memset(cachedFiles[i].name, '\0', sizeof(cachedFiles[i].name));
 		}
-		if (saveRootDirectory(1) < 0) printf("Failed to write root directory\n");
+		if (saveRootDirectory(1) < 0) printf("Failed : saveRootDirectory\n");
 
 
     // writing freeBitMap to disk
-		if (saveFreeBitMap(1) < 0) printf("Failed to write freeBitMap to disk\n");
+		if (saveFreeBitMap(1) < 0) printf("Failed : saveFreeBitMap\n");
 	} else {
     init_disk(MCLEAN_ANGUS_DISK, BLOCK_SIZE, NUM_BLOCKS);
 
@@ -97,51 +97,49 @@ void mksfs(int fresh) {
 
 
 int sfs_getnextfilename(char *fname) {
-	if (totalFiles == filesVisited) { // get back to beginning of the list
-		filesVisited = 0;
+	if (numTotalFiles == totalFilesVisited) {
+		totalFilesVisited = 0;
 		return 0;
 	}
 
-	// iterate through all files in root
+	// iterate all files
 	int fileIndex = 0;
 	int i;
 	for (i=0; i<NUM_FILES; i++){
 		if (cachedFiles[i].num < 0) {
-			if (fileIndex == filesVisited) {
+			if (fileIndex == totalFilesVisited) {
 				memcpy(fname, cachedFiles[i].name, sizeof(cachedFiles[i].name));
 				break;
 			}
 			fileIndex++;
 		}
 	}
-	filesVisited++;
+	totalFilesVisited++;
 	return 1;
 }
 
 int sfs_getfilesize(const char* path) {
-  // TODO : validate names
-  // if (checkNameIsValid(path) < 0)
-	// 	return -1;
+  if (checkNameIsValid(path) < 0)
+		return -1;
 
 	for (int i=0; i<NUM_FILES; i++) {
 		if (cachedFiles[i].num != -1 && !strcmp(cachedFiles[i].name, path))
 			return cachedINodeTable[cachedFiles[i].num].size;
 	}
-	printf("File not found : %s\n", path);
+	printf("Failed : File not found : %s\n", path);
 	return -1;
 }
 
 int sfs_fopen(char *name) {
-  // TODO : validate names
-	// if (checkNameIsValid(name) < 0)
-	// 	return -1;
+	if (checkNameIsValid(name) < 0)
+		return -1;
 
 
 	int iNodeInd = -1;
 	int i;
   // iterate to find file
 	for (i=0; i<NUM_FILES; i++) {
-    // printf("Iterating %d, %s\n", i, cachedFiles[i].name);
+    // printf("Failed : Iterating %d, %s\n", i, cachedFiles[i].name);
 		if (!strcmp(cachedFiles[i].name, name)) {
 			iNodeInd = cachedFiles[i].num;
 			break;
@@ -149,7 +147,7 @@ int sfs_fopen(char *name) {
 	}
 
 	if (iNodeInd > -1) {
-    // file exists at
+    // file exists
 		for (i=1; i<INODE_TABLE_LEN; i++) {
 			if (cachedFd[i].inodeIndex == iNodeInd) {
 				return i;
@@ -164,7 +162,7 @@ int sfs_fopen(char *name) {
 			}
 		}
 		if (fileIndex == -1) {
-			printf("Root directory full\n");
+			printf("Failed : Root directory full\n");
 			return -1;
 		}
 
@@ -176,7 +174,7 @@ int sfs_fopen(char *name) {
 			}
 		}
 		if (iNodeInd < 0) {
-			printf("INode not found\n");
+			printf("Failed : iNodeInd not found\n");
 			return -1;
 		}
 
@@ -185,9 +183,9 @@ int sfs_fopen(char *name) {
 		cachedINodeTable[iNodeInd].size = 0;
 
 		if (saveINodeTable(0) < 0)
-			printf("Failure(s) writing iNode to disk");
+			printf("Failed : : saveINodeTable");
 		if (saveRootDirectory(0) < 0)
-			printf("Failure(s) writing root directory to disk");
+			printf("Failed : : saveRootDirectory");
 	}
 
 
@@ -199,37 +197,37 @@ int sfs_fopen(char *name) {
 		}
 	}
 	if (i == INODE_TABLE_LEN) {
-		printf("Open file descriptor table full. Investigate\n");
+    // File descriptor (cachedFd) full
 		return -1;
 	}
 
 	int rwptr = cachedINodeTable[iNodeInd].size;
 	cachedFd[fdIndex] = (file_descriptor) {iNodeInd, &cachedINodeTable[iNodeInd], rwptr};
-	totalFiles++;
+	numTotalFiles++;
 
 	return fdIndex;
 }
 
 int sfs_fclose(int fileID) {
 	if (fileID <= 0 || fileID > NUM_FILES) { // fileID 0 is reserved for root
-		printf("fileID %d is invalid\n", fileID);
+		printf("Failed : fileID %d is invalid\n", fileID);
 		return -1;
 	}
 
 	// check if file already closed
 	if (cachedFd[fileID].inodeIndex == -1) {
-		printf("File is already closed\n");
+		printf("Failed : File already closed\n");
 		return -1;
 	}
 
 	cachedFd[fileID] = (file_descriptor) {-1, NULL, 0};
-	totalFiles--;
+	numTotalFiles--;
 	return 0;
 }
 
 int sfs_fread(int fileID, char *buf, int length) {
 	if (length < 0) {
-		printf("Length cannot be negative");
+		printf("Failed : Length cannot be negative");
 		return -1;
 	}
 
@@ -238,7 +236,7 @@ int sfs_fread(int fileID, char *buf, int length) {
 
 	// check that file is open
 	if ((*tmpFd).inodeIndex == -1) {
-		printf("File is not open");
+		printf("Failed : File is not open");
 		return -1;
 	}
 
@@ -261,7 +259,7 @@ int sfs_fread(int fileID, char *buf, int length) {
 	int bytesRead = 0;
 
 	buffer = (void*) malloc(BLOCK_SIZE);
-	int addresses[NUM_ADDRESSES_INDIRECT]; // pointers inside indirect block
+	int blockAddresses[NUM_INDIRECT_ADDRESSES];
 	int addressesInitialized = 0;
 	int indirectBlockIndex;
 
@@ -276,14 +274,14 @@ int sfs_fread(int fileID, char *buf, int length) {
 			if (!addressesInitialized) {
 				// initialize block and read indirectAddresses
 				read_blocks((*activeINode).indirectPointer, 1, buffer);
-				memcpy(addresses, buffer, BLOCK_SIZE);
+				memcpy(blockAddresses, buffer, BLOCK_SIZE);
 				memset(buffer, 0, BLOCK_SIZE);
 				addressesInitialized = 1;
 			}
 
 			// write data to buf
 			indirectBlockIndex = i-11-1;
-			read_blocks(addresses[indirectBlockIndex], 1, buffer);
+			read_blocks(blockAddresses[indirectBlockIndex], 1, buffer);
 
 		} else {
 			// direct pointers
@@ -317,7 +315,7 @@ int sfs_fread(int fileID, char *buf, int length) {
 
 int sfs_fwrite(int fileID, const char *buf, int length) {
 	if (length < 0) {
-		printf("Length cannot be negative");
+		printf("Failed : Length cannot be negative");
 		return -1;
 	}
 
@@ -326,7 +324,7 @@ int sfs_fwrite(int fileID, const char *buf, int length) {
 
 	// check that file is open
 	if ((*tmpFd).inodeIndex == -1) {
-		printf("File is not open");
+		printf("Failed : File is not open");
 		return -1;
 	}
 
@@ -344,7 +342,7 @@ int sfs_fwrite(int fileID, const char *buf, int length) {
 	int bytesWritten = 0;
 
 	buffer = (void*) malloc(BLOCK_SIZE);
-	int addresses[NUM_ADDRESSES_INDIRECT]; // pointers inside indirect block
+	int blockAddresses[NUM_INDIRECT_ADDRESSES];
 	int addressesInitialized = 0;
 	int indirectBlockIndex;
 	int indirectBlockAddressModified = 0; // boolean
@@ -356,24 +354,23 @@ int sfs_fwrite(int fileID, const char *buf, int length) {
 		memset(buffer, 0, BLOCK_SIZE);
 		if (i > 11) {
 			// indirect pointers
-
 			if (!addressesInitialized) {
-				// reading indirect block, initializing addresses
+				// reading indirect block, initializing blockAddresses
 				if ((*activeINode).indirectPointer == -1) {
 					if (get_index() > 1023 || get_index() < 0) {
-						printf("Reached max bitmap size");
+						printf("Failed : Reached max bitmap size");
 						fullError = 1;
 						break;
 					}
 					(*activeINode).indirectPointer = get_index();
 					force_set_index((*activeINode).indirectPointer);
 					int index;
-					for (index=0; index<NUM_ADDRESSES_INDIRECT; index++)
-						addresses[index] = -1;
+					for (index=0; index<NUM_INDIRECT_ADDRESSES; index++)
+						blockAddresses[index] = -1;
 					indirectBlockAddressModified = 1;
 				} else {
 					read_blocks((*activeINode).indirectPointer, 1, buffer);
-					memcpy(addresses, buffer, BLOCK_SIZE);
+					memcpy(blockAddresses, buffer, BLOCK_SIZE);
 					memset(buffer, 0, BLOCK_SIZE);
 				}
 				addressesInitialized = 1;
@@ -381,61 +378,52 @@ int sfs_fwrite(int fileID, const char *buf, int length) {
 
 			// write data to disk
 			indirectBlockIndex = i-11-1;
-			if (indirectBlockIndex >= NUM_ADDRESSES_INDIRECT) {
-				printf("Reached max file size");
+			if (indirectBlockIndex >= NUM_INDIRECT_ADDRESSES) {
+				printf("Failed : Reached max file size");
 				fullError = 1;
 				break;
 			}
-			if (addresses[indirectBlockIndex] == -1) {
+			if (blockAddresses[indirectBlockIndex] == -1) {
 				if (get_index() > 1023 || get_index() < 0) {
-					printf("No more available blocks in bit map");
+					printf("Failed : No more available blocks in bit map");
 					fullError = 1;
 					break;
 				}
-				addresses[indirectBlockIndex] = get_index();
-				force_set_index(addresses[indirectBlockIndex]);
+				blockAddresses[indirectBlockIndex] = get_index();
+				force_set_index(blockAddresses[indirectBlockIndex]);
 				indirectBlockAddressModified = 1;
 			}
-      activeAddress = addresses[indirectBlockIndex];
+      activeAddress = blockAddresses[indirectBlockIndex];
 
 		} else {
 			// direct pointers
-
-			// write data to disk
 			if ((*activeINode).data_ptrs[i] == -1) {
 				if (get_index() > 1023 || get_index() < 0) {
-					printf("No more available blocks in bit map");
+					printf("Failed : No more available blocks in bit map");
 					fullError = 1;
 					break;
 				}
 				(*activeINode).data_ptrs[i] = get_index();
 				force_set_index((*activeINode).data_ptrs[i]);
-				if (i == startBlockIndex && startOffsetInBlock != 0)
-					printf("(direct pointers) startOffsetInBlock should be 0. Investigate.");
 			}
 
       activeAddress = (*activeINode).data_ptrs[i];
-
 		}
+
+    // write data
     read_blocks(activeAddress, 1, buffer);
     if (i == startBlockIndex) {
     	if (startBlockIndex == endBlockIndex) {
-    		// write (endOffsetInBlock-startOffsetInBlock) bytes from buf to end of buffer (buffer+startOffsetInBlock)
     		memcpy(buffer+startOffsetInBlock, buf, endOffsetInBlock-startOffsetInBlock);
     		bytesWritten += endOffsetInBlock-startOffsetInBlock;
     	} else {
-    		// write (BLOCK_SIZE-startOffsetInBlock) bytes from buf to buffer+startOffsetInBlock
     		memcpy(buffer+startOffsetInBlock, buf, BLOCK_SIZE-startOffsetInBlock);
     		bytesWritten += BLOCK_SIZE-startOffsetInBlock;
     	}
     } else if (i == endBlockIndex) {
-    	// write endOffsetInBlock bytes from buf+bytesWritten to buffer
     	memcpy(buffer, buf+bytesWritten, endOffsetInBlock);
-    	if (length - bytesWritten != endOffsetInBlock)
-    		printf("Investigate endOffsetInBlock in direct pointers");
     	bytesWritten += endOffsetInBlock;
     } else {
-    	// write BLOCK_SIZE bytes from buf+bytesWritten to buffer
     	memcpy(buffer, buf+bytesWritten, BLOCK_SIZE);
     	bytesWritten += BLOCK_SIZE;
     }
@@ -450,13 +438,8 @@ int sfs_fwrite(int fileID, const char *buf, int length) {
 	// write indirectblock back to disk
 	if (indirectBlockAddressModified) {
 		memset(buffer, 0, BLOCK_SIZE);
-		memcpy(buffer, addresses, BLOCK_SIZE);
-		if ((*activeINode).indirectPointer < 0 || (*activeINode).indirectPointer > 1023) {
-			printf("Why indirect block invalid value??");
-			fullError = 1;
-		} else {
-			write_blocks((*activeINode).indirectPointer, 1, buffer);
-		}
+		memcpy(buffer, blockAddresses, BLOCK_SIZE);
+		write_blocks((*activeINode).indirectPointer, 1, buffer);
 	}
 
 	(*tmpFd).rwptr += bytesWritten;
@@ -464,10 +447,10 @@ int sfs_fwrite(int fileID, const char *buf, int length) {
 		(*activeINode).size = (*tmpFd).rwptr; // update size
 	}
 	free(buffer);
+  if (saveFreeBitMap(0) < 0)
+    printf("Failed : saveFreeBitMap failed");
 	if (saveINodeTable(0) < 0)
-		printf("Failure(s) writing inode table to disk");
-	if (saveFreeBitMap(0) < 0)
-		printf("Failure(s) writing free bit map to disk");
+		printf("Failed : saveINodeTable failed");
 
 	if (fullError)
 		return -1;
@@ -476,14 +459,14 @@ int sfs_fwrite(int fileID, const char *buf, int length) {
 }
 
 int sfs_fseek(int fileID, int loc) {
-	if (fileID <= 0 || fileID > NUM_FILES) { // fileID 0 is reserved for root
-		printf("fileID %d is invalid", fileID);
+	if (fileID <= 0 || fileID > NUM_FILES) {
+		printf("Failed : %d invalid fileID", fileID);
 		return -1;
 	}
 
 	// make sure file already open
 	if (cachedFd[fileID].inodeIndex == -1) {
-		printf("File is not open");
+		printf("Failed : File not open");
 		return -1;
 	}
 
@@ -499,9 +482,11 @@ int sfs_fseek(int fileID, int loc) {
 }
 
 int sfs_remove(char *file) {
-	// if (checkNameIsValid(file) < 0)
-	// 	return -1;
+	if (checkNameIsValid(file) < 0)
+		return -1;
 
+
+  printf("Removing : %s\n", file);
 	// find file by name - iterate root directory
 	int i;
 	int iNodeInd = -1;
@@ -513,7 +498,7 @@ int sfs_remove(char *file) {
 	}
 
 	if (i == NUM_FILES) {
-		printf("File to be removed is not found");
+		printf("Failed : Couldn't find file");
 		return -1;
 	}
 
@@ -521,14 +506,14 @@ int sfs_remove(char *file) {
 	for (i=1; i<INODE_TABLE_LEN; i++) {
 		if (cachedFd[i].inodeIndex == iNodeInd) {
 			cachedFd[i] = (file_descriptor) {-1, NULL, 0};
-			totalFiles--;
+			numTotalFiles--;
 		}
 	}
 
 	inode_t *activeINode;
 	activeINode = &cachedINodeTable[iNodeInd];
 	int endBlockIndex = (*activeINode).size / BLOCK_SIZE;
-	int addresses[NUM_ADDRESSES_INDIRECT]; // pointers inside indirect block
+	int blockAddresses[NUM_INDIRECT_ADDRESSES];
 	int addressesInitialized = 0;
 	int indirectBlockIndex;
 	int indirectBlockAddressModified = 0; // boolean
@@ -538,33 +523,33 @@ int sfs_remove(char *file) {
 		memset(buffer, 0, BLOCK_SIZE);
 		if (i>11) {
 			// indirect pointers
-
 			if (!addressesInitialized) {
-				if ((*activeINode).indirectPointer == -1) {
-					if ((*activeINode).size != 12*BLOCK_SIZE) {
-						printf("Issue with size. Investigate");
-						return -1;
-					}
-					break;
-				}
-				// initialize addresses
+        if ((*activeINode).indirectPointer == -1) {
+          if ((*activeINode).size != 12*BLOCK_SIZE) {
+            printf("Issue with size. Investigate\n");
+            return -1;
+          }
+          break;
+        }
+				// initialize blockAddresses
 				read_blocks((*activeINode).indirectPointer, 1, buffer);
-				memcpy(addresses, buffer, BLOCK_SIZE);
+				memcpy(blockAddresses, buffer, BLOCK_SIZE);
 				memset(buffer, 0, BLOCK_SIZE);
 				addressesInitialized = 1;
 			}
 
-			indirectBlockIndex = i-11-1;
-			if (addresses[indirectBlockIndex] == -1) {
+      indirectBlockIndex = i-11-1;
+			if (blockAddresses[indirectBlockIndex] == -1) {
 				if ((*activeINode).size != i*BLOCK_SIZE) {
-					printf("Issue with size. Investigate");
+					printf("Issue with size. Investigate\n");
 					return -1;
 				}
 				break;
 			}
-			write_blocks(addresses[indirectBlockIndex], 1, buffer);
-			rm_index(addresses[indirectBlockIndex]);
-			addresses[indirectBlockIndex] = -1;
+
+			write_blocks(blockAddresses[indirectBlockIndex], 1, buffer);
+			rm_index(blockAddresses[indirectBlockIndex]);
+			blockAddresses[indirectBlockIndex] = -1;
 			indirectBlockAddressModified = 1;
 		} else {
 			// direct pointers
@@ -577,7 +562,7 @@ int sfs_remove(char *file) {
 	// write indirectblock back to disk
 	if (indirectBlockAddressModified) {
 		memset(buffer, 0, BLOCK_SIZE);
-		memcpy(buffer, addresses, BLOCK_SIZE);
+		memcpy(buffer, blockAddresses, BLOCK_SIZE);
 		write_blocks((*activeINode).indirectPointer, 1, buffer);
 		indirectBlockAddressModified = 0;
 	}
@@ -585,13 +570,14 @@ int sfs_remove(char *file) {
 	rm_index((*activeINode).indirectPointer);
 	(*activeINode).indirectPointer = -1;
 	(*activeINode).size = -1;
+
 	free(buffer);
 	if (saveINodeTable(0) < 0)
-		printf("Failure(s) writing inode table to disk");
+		printf("Failed : : saveINodeTable");
 	if (saveFreeBitMap(0) < 0)
-		printf("Failure(s) writing free bit map to disk");
+		printf("Failed : : saveFreeBitMap");
 	if (saveRootDirectory(0) < 0)
-		printf("Failure(s) writing root directory to disk");
+		printf("Failed : : saveRootDirectory");
 
 	return 0;
 }
